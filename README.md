@@ -124,4 +124,4 @@ The SRS and system design diagrams (DFD, use case, activity, state, sequence, cl
 
 ## 📄 License
 
-This project was created for academic purposes at [University Name].
+This project was created for academic purposes at University of Engineering and Technology.
