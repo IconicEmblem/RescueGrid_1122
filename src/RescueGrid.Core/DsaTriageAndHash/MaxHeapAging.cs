@@ -17,6 +17,9 @@ namespace RescueGrid.Core.DsaTriageAndHash
         private TriageNode[] heap;
         private int size;
 
+        // ticket id -> position in the heap array (enables O(log n) Remove)
+        private readonly HashMap<string, int> index = new HashMap<string, int>();
+
         public MaxHeapAging(int capacity = 16)
         {
             heap = new TriageNode[Math.Max(capacity, 2)];
@@ -38,10 +41,13 @@ namespace RescueGrid.Core.DsaTriageAndHash
 
         public void Insert(string incidentId, int baseSeverity, DateTime arrivalTime)
         {
+            if (index.ContainsKey(incidentId))
+                throw new ArgumentException("Ticket already in queue: " + incidentId);
             if (size == heap.Length) Array.Resize(ref heap, heap.Length * 2);
 
             double key = ComputeKey(baseSeverity, arrivalTime);
             heap[size] = new TriageNode(incidentId, baseSeverity, arrivalTime, key);
+            index.Put(incidentId, size);
             size++;
             SiftUp(size - 1);
         }
@@ -57,13 +63,38 @@ namespace RescueGrid.Core.DsaTriageAndHash
         public TriageNode ExtractMax()
         {
             if (size == 0) throw new InvalidOperationException("Heap is empty.");
+            return RemoveAt(0);
+        }
 
-            TriageNode top = heap[0];
+        public bool Contains(string incidentId)
+        {
+            return index.ContainsKey(incidentId);
+        }
+
+        /// <summary>Cancel a ticket by id (e.g. caller hung up). O(log n).</summary>
+        public bool Remove(string incidentId)
+        {
+            if (!index.TryGet(incidentId, out int i)) return false;
+            RemoveAt(i);
+            return true;
+        }
+
+        private TriageNode RemoveAt(int i)
+        {
+            int last = size - 1;
+            if (i != last) Swap(i, last);
+
+            TriageNode removed = heap[last];
+            index.Remove(removed.IncidentId);
+            heap[last] = null;
             size--;
-            heap[0] = heap[size];
-            heap[size] = null;
-            if (size > 0) SiftDown(0);
-            return top;
+
+            if (i < size)
+            {
+                SiftUp(i);
+                SiftDown(i);
+            }
+            return removed;
         }
 
         private void SiftUp(int i)
@@ -99,6 +130,8 @@ namespace RescueGrid.Core.DsaTriageAndHash
             TriageNode t = heap[a];
             heap[a] = heap[b];
             heap[b] = t;
+            index.Put(heap[a].IncidentId, a);
+            index.Put(heap[b].IncidentId, b);
         }
     }
 }
