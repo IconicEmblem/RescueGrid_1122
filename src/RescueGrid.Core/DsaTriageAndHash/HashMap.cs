@@ -10,6 +10,7 @@ namespace RescueGrid.Core.DsaTriageAndHash
     public class HashMap<K, V>
     {
         private const int InitialCapacity = 16;
+        private const double LoadFactorThreshold = 0.75;
 
         private HashEntry<K, V>[] buckets;
         private int count;
@@ -43,6 +44,9 @@ namespace RescueGrid.Core.DsaTriageAndHash
             }
             buckets[i] = new HashEntry<K, V>(key, value, buckets[i]);
             count++;
+
+            if (count > buckets.Length * LoadFactorThreshold)
+                Resize();
         }
 
         /// <summary>Get the value for a key. Throws if the key is missing.</summary>
@@ -72,6 +76,46 @@ namespace RescueGrid.Core.DsaTriageAndHash
         public bool ContainsKey(K key)
         {
             return TryGet(key, out _);
+        }
+
+        /// <summary>Delete a key. Returns true if it existed.</summary>
+        public bool Remove(K key)
+        {
+            if (key == null) throw new ArgumentNullException(nameof(key));
+
+            int i = IndexFor(key, buckets.Length);
+            HashEntry<K, V> prev = null;
+            for (var e = buckets[i]; e != null; prev = e, e = e.Next)
+            {
+                if (e.Key.Equals(key))
+                {
+                    if (prev == null) buckets[i] = e.Next;
+                    else prev.Next = e.Next;
+                    count--;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>Double the table size and re-hash every entry.</summary>
+        private void Resize()
+        {
+            var old = buckets;
+            buckets = new HashEntry<K, V>[old.Length * 2];
+
+            foreach (var head in old)
+            {
+                var e = head;
+                while (e != null)
+                {
+                    var next = e.Next;
+                    int i = IndexFor(e.Key, buckets.Length);
+                    e.Next = buckets[i];
+                    buckets[i] = e;
+                    e = next;
+                }
+            }
         }
     }
 }
